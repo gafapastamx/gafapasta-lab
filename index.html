@@ -2,98 +2,233 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>GAFAPASTA // Lab de Arquitectura Facial</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background-color: #050505; color: #f5f5f5; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    body {
+      background-color: #050505;
+      color: #f5f5f5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+    }
     .espejo { transform: scaleX(-1); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col justify-between select-none">
+<body class="select-none relative flex items-center justify-center bg-black">
 
-  <!-- Contenedor de Video y Canvas -->
-  <div class="relative w-full h-full max-w-md mx-auto bg-black overflow-hidden">
+  <div class="relative w-full h-[100dvh] max-w-md mx-auto bg-black overflow-hidden flex flex-col justify-between">
     <video id="webcam" autoplay playsinline muted class="hidden"></video>
-    <canvas id="output_canvas" class="w-full h-full object-cover espejo"></canvas>
+    <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover espejo"></canvas>
 
     <!-- Pantalla de Carga -->
-    <div id="loader" class="absolute inset-0 bg-black/95 flex flex-col items-center justify-center p-6 text-center z-30">
-      <p class="text-lime-400 text-xs tracking-widest uppercase mb-2">// GAFAPASTA LAB v1.0</p>
-      <h1 class="text-xl font-bold uppercase tracking-tight mb-4">Escáner de Arquitectura Facial</h1>
+    <div id="loader" class="absolute inset-0 bg-black/95 flex flex-col items-center justify-center p-6 text-center z-40">
+      <p class="text-lime-400 text-[11px] tracking-[0.25em] uppercase mb-2">// GAFAPASTA LAB v2.5</p>
+      <h1 class="text-xl font-bold uppercase tracking-tight mb-3">Probador & Arquitectura Facial</h1>
       <p id="status-text" class="text-xs text-neutral-400 mb-6">Cargando motor biométrico 3D...</p>
-      <button id="start-btn" class="hidden bg-lime-400 text-black font-bold px-6 py-3 text-xs uppercase tracking-widest hover:bg-white transition">
+      <button id="start-btn" class="hidden bg-lime-400 text-black font-bold px-6 py-3.5 text-xs uppercase tracking-widest hover:bg-white transition shadow-lg">
         Encender Cámara →
       </button>
     </div>
 
-    <!-- HUD Superior: Diagnóstico Biométrico -->
-    <div id="hud" class="hidden absolute top-4 left-4 right-4 bg-black/80 backdrop-blur-md border border-white/20 p-3 text-xs z-20">
-      <div class="flex justify-between items-center border-b border-white/15 pb-1 mb-2">
-        <span class="text-lime-400 font-bold tracking-widest uppercase">// LECTURA EN VIVO</span>
-        <span id="hud-ratio" class="bg-white/10 px-1.5 py-0.5 text-[10px]">ÍNDICE: --</span>
+    <!-- HUD Superior Compacto -->
+    <div id="hud" class="hidden relative z-20 m-3 bg-black/75 backdrop-blur-md border border-white/15 p-3 rounded-sm">
+      <div class="flex justify-between items-center border-b border-white/10 pb-1.5 mb-1.5">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span>
+          <span class="text-lime-400 text-[11px] font-bold tracking-widest uppercase">LECTURA BIOMÉTRICA</span>
+        </div>
+        <span id="hud-ratio" class="bg-white/10 text-white px-2 py-0.5 text-[10px] font-bold">ÍNDICE: --</span>
       </div>
-      <p id="hud-arquetipo" class="text-neutral-200 leading-relaxed">Analizando tercios faciales...</p>
+      <p id="hud-arquetipo" class="text-[11px] text-neutral-200 leading-snug">Escaneando proporciones...</p>
     </div>
 
     <!-- Controles Inferiores -->
-    <div id="controls" class="hidden absolute bottom-5 left-4 right-4 bg-black/90 backdrop-blur-md border border-white/30 p-4 z-20">
-      <div class="flex justify-between items-center mb-2">
-        <span class="text-[10px] text-neutral-400 uppercase tracking-wider">Selecciona Silueta (Escala Real mm)</span>
-        <span id="frame-calibre" class="text-[10px] text-lime-400 font-bold">140mm</span>
+    <div id="controls" class="hidden relative z-20 mx-3 mb-4 bg-black/85 backdrop-blur-xl border border-white/20 p-3.5 rounded-sm shadow-2xl">
+      
+      <!-- Fila 1: Calibre + Ajuste fino de tamaño + Subir foto -->
+      <div class="flex justify-between items-center mb-2.5">
+        <div>
+          <span class="text-[9px] text-neutral-400 uppercase tracking-widest block">Pieza Activa</span>
+          <span id="frame-calibre" class="text-[11px] text-lime-400 font-bold">CALIBRE 52-20-145</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button id="scale-down" class="bg-white/10 border border-white/20 px-2 py-1 text-[10px] text-white font-bold" title="Reducir ajuste">-</button>
+          <button id="scale-up" class="bg-white/10 border border-white/20 px-2 py-1 text-[10px] text-white font-bold" title="Aumentar ajuste">+</button>
+          <label class="cursor-pointer bg-white/15 hover:bg-white/25 border border-lime-400/50 px-2.5 py-1 text-[10px] uppercase tracking-wider text-lime-300 font-bold transition">
+            + Subir Foto
+            <input id="upload-png" type="file" accept="image/*" class="hidden" />
+          </label>
+        </div>
       </div>
 
-      <!-- Botones de Armazones -->
-      <div id="frame-list" class="flex gap-2 mb-3 overflow-x-auto pb-1"></div>
+      <!-- Fila 2: Carrusel de tus 3 Lentes -->
+      <div id="frame-list" class="flex gap-2 mb-2.5 overflow-x-auto no-scrollbar pb-1"></div>
 
-      <!-- Botón de WhatsApp -->
+      <!-- Fila 3: Tinte de Mica -->
+      <div class="flex items-center justify-between border-t border-white/10 pt-2 mb-3">
+        <span class="text-[9px] text-neutral-400 uppercase tracking-wider">Mica:</span>
+        <div class="flex gap-1.5" id="tint-list">
+          <button data-tint="rgba(255,255,255,0.05)" class="px-2 py-0.5 text-[10px] border border-white bg-white text-black font-bold">Cristal</button>
+          <button data-tint="rgba(217,119,6,0.30)" class="px-2 py-0.5 text-[10px] border border-white/25 text-amber-300">Ámbar</button>
+          <button data-tint="rgba(21,128,61,0.30)" class="px-2 py-0.5 text-[10px] border border-white/25 text-emerald-300">Botella</button>
+          <button data-tint="rgba(15,23,42,0.52)" class="px-2 py-0.5 text-[10px] border border-white/25 text-slate-300">Solar</button>
+        </div>
+      </div>
+
+      <!-- Fila 4: WhatsApp -->
       <a id="wa-link" href="#" target="_blank" class="block w-full text-center bg-lime-400 text-black font-bold py-2.5 text-xs uppercase tracking-widest hover:bg-white transition">
-        Mandar mi diagnóstico por WhatsApp →
+        Mandar diagnóstico por WhatsApp →
       </a>
     </div>
   </div>
 
-  <!-- Lógica MediaPipe + Renderizado Vectorial -->
   <script type="module">
     import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-    // Catálogo de prueba con SVGs integrados (No requiere subir fotos externas aún)
-    const CATALOGO = [
-      {
-        id: "tokio-heavy",
-        nombre: "Acetato Tokio 8mm",
-        anchoMm: 138,
-        calibre: "50-22-145",
-        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 180">
-          <path d="M15,40 L215,40 L225,70 L275,70 L285,40 L485,40 L470,155 C465,170 440,175 385,175 C325,175 300,155 288,100 L275,85 L225,85 L212,100 C200,155 175,175 115,175 C60,175 35,170 30,155 Z" fill="none" stroke="#111111" stroke-width="26" stroke-linejoin="round"/>
-          <path d="M15,40 L215,40 L225,70 L275,70 L285,40 L485,40 L470,155 C465,170 440,175 385,175 C325,175 300,155 288,100 L275,85 L225,85 L212,100 C200,155 175,175 115,175 C60,175 35,170 30,155 Z" fill="rgba(163,230,53,0.12)" stroke="#e5e5e5" stroke-width="4" stroke-linejoin="round"/>
-          <circle cx="42" cy="58" r="5" fill="#d4d4d4"/><circle cx="58" cy="58" r="5" fill="#d4d4d4"/>
-          <circle cx="442" cy="58" r="5" fill="#d4d4d4"/><circle cx="458" cy="58" r="5" fill="#d4d4d4"/>
-        </svg>`
-      },
-      {
-        id: "aviador-80s",
-        nombre: "Archivo 80s Doble Puente",
-        anchoMm: 144,
-        calibre: "56-16-145",
-        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 190">
-          <line x1="160" y1="32" x2="340" y2="32" stroke="#eab308" stroke-width="8" stroke-linecap="round"/>
-          <line x1="210" y1="62" x2="290" y2="62" stroke="#eab308" stroke-width="6" stroke-linecap="round"/>
-          <path d="M30,45 L205,45 C220,45 225,130 190,165 C150,185 60,180 40,140 Z" fill="rgba(234,179,8,0.18)" stroke="#eab308" stroke-width="9"/>
-          <path d="M470,45 L295,45 C280,45 275,130 310,165 C350,185 440,180 460,140 Z" fill="rgba(234,179,8,0.18)" stroke="#eab308" stroke-width="9"/>
-        </svg>`
-      },
-      {
-        id: "geo-brutal",
-        nombre: "Hexagonal Brutalista",
-        anchoMm: 136,
-        calibre: "48-21-140",
-        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 175">
-          <polygon points="35,65 80,35 195,35 220,75 195,150 75,150" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="16" stroke-linejoin="bevel"/>
-          <polygon points="465,65 420,35 305,35 280,75 305,150 425,150" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="16" stroke-linejoin="bevel"/>
-          <line x1="218" y1="72" x2="282" y2="72" stroke="#f43f5e" stroke-width="14"/>
-        </svg>`
+    let tinteActual = "rgba(255,255,255,0.05)";
+    let ajusteEscalaUsuario = 1.0;
+
+    // Tus 3 armazones reconstruidos frontalmente con textura fotorrealista
+    function generarArmazonFotorrealista(id, tinte) {
+      // 1. CAREY DOBLE PUENTE (Foto 2: Aviador Geométrico Tortoise)
+      if (id === "carey-doble-puente") {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 205">
+          <defs>
+            <!-- Textura Acetato Carey / Tortoise con manchas miel y café oscuro -->
+            <radialGradient id="miel1" cx="25%" cy="30%" r="35%">
+              <stop offset="0%" stop-color="#d97706"/>
+              <stop offset="55%" stop-color="#78350f"/>
+              <stop offset="100%" stop-color="#1c0d06"/>
+            </radialGradient>
+            <linearGradient id="careyBase" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1f0e05"/>
+              <stop offset="18%" stop-color="#9a4e12"/>
+              <stop offset="32%" stop-color="#291206"/>
+              <stop offset="48%" stop-color="#d97706"/>
+              <stop offset="64%" stop-color="#1c0c04"/>
+              <stop offset="82%" stop-color="#853f0d"/>
+              <stop offset="100%" stop-color="#1f0e05"/>
+            </linearGradient>
+            <linearGradient id="reflejoCristal" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.42)"/>
+              <stop offset="28%" stop-color="rgba(255,255,255,0.06)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Micas octogonales redondeadas -->
+          <path d="M58,42 L205,42 L230,68 C228,132 198,175 135,175 C75,175 48,135 46,72 Z" fill="${tinte}"/>
+          <path d="M482,42 L335,42 L310,68 C312,132 342,175 405,175 C465,175 492,135 494,72 Z" fill="${tinte}"/>
+
+          <!-- Destello diagonal de lente real -->
+          <polygon points="68,44 125,44 88,170 54,142" fill="url(#reflejoCristal)"/>
+          <polygon points="342,44 398,44 362,170 328,142" fill="url(#reflejoCristal)"/>
+
+          <!-- Silueta de Acetato Carey con Doble Puente y Corte Octogonal -->
+          <path d="M18,58 L54,22 L486,22 L522,58 L522,94 L506,112 C495,165 460,192 405,192 C345,192 310,160 296,102 C290,78 282,72 270,72 C258,72 250,78 244,102 C230,160 195,192 135,192 C80,192 45,165 34,112 L18,94 Z
+                   M62,40 L202,40 L226,65 C224,132 195,174 135,174 C76,174 50,132 48,68 Z
+                   M338,40 L478,40 L492,68 C490,132 464,174 405,174 C345,174 316,132 314,65 Z
+                   M225,38 L315,38 L302,54 L238,54 Z"
+                fill="url(#careyBase)" fill-rule="evenodd" stroke="#140903" stroke-width="2"/>
+
+          <!-- Manchas ámbar translúcidas propias del acetato carey -->
+          <ellipse cx="58" cy="30" rx="22" ry="6" fill="rgba(245,158,11,0.35)"/>
+          <ellipse cx="270" cy="28" rx="30" ry="5" fill="rgba(245,158,11,0.4)"/>
+          <ellipse cx="475" cy="32" rx="18" ry="6" fill="rgba(245,158,11,0.35)"/>
+          <ellipse cx="42" cy="125" rx="8" ry="22" fill="rgba(245,158,11,0.3)"/>
+          <ellipse cx="498" cy="120" rx="8" ry="22" fill="rgba(245,158,11,0.3)"/>
+
+          <!-- Brillo superior de acetato pulido -->
+          <path d="M58,25 L482,25" stroke="rgba(255,255,255,0.35)" stroke-width="3" stroke-linecap="round"/>
+        </svg>`;
       }
+
+      // 2. WAYFARER OBSIDIANA (Foto 3: Acetato Negro con Remaches Plateados)
+      if (id === "wayfarer-obsidiana") {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 195">
+          <defs>
+            <linearGradient id="acetatoNegro" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#3f3f46"/>
+              <stop offset="12%" stop-color="#18181b"/>
+              <stop offset="55%" stop-color="#09090b"/>
+              <stop offset="100%" stop-color="#18181b"/>
+            </linearGradient>
+            <linearGradient id="reflejoW" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.38)"/>
+              <stop offset="30%" stop-color="rgba(255,255,255,0.04)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Micas Wayfarer -->
+          <path d="M48,46 C95,42 185,46 218,56 C225,112 205,168 140,170 C72,170 46,132 42,68 Z" fill="${tinte}"/>
+          <path d="M492,46 C445,42 355,46 322,56 C315,112 335,168 400,170 C468,170 494,132 498,68 Z" fill="${tinte}"/>
+
+          <!-- Reflejo de cristal -->
+          <polygon points="62,46 118,46 85,166 52,145" fill="url(#reflejoW)"/>
+          <polygon points="342,46 398,46 365,166 332,145" fill="url(#reflejoW)"/>
+
+          <!-- Armazón Wayfarer Negro Pulido con inclinación clásica -->
+          <path d="M10,32 C85,22 195,30 245,42 C260,45 280,45 295,42 C345,30 455,22 530,32 L524,68 C514,72 510,82 506,112 C498,164 465,186 398,186 C332,186 308,152 296,95 C290,72 280,66 270,66 C260,66 250,72 244,95 C232,152 208,186 142,186 C75,186 42,164 34,112 C30,82 26,72 16,68 Z
+                   M52,46 C95,42 182,46 216,56 C222,112 204,168 140,168 C75,168 50,132 44,68 Z
+                   M488,46 C445,42 358,46 324,56 C318,112 336,168 400,168 C465,168 490,132 496,68 Z"
+                fill="url(#acetatoNegro)" fill-rule="evenodd" stroke="#000" stroke-width="2"/>
+
+          <!-- Bisel de luz superior -->
+          <path d="M22,33 C100,26 190,32 242,43 M298,43 C350,32 440,26 518,33" stroke="rgba(255,255,255,0.28)" stroke-width="2.5" fill="none"/>
+
+          <!-- Remaches metálicos ovalados clásicos en los talones -->
+          <ellipse cx="30" cy="48" rx="9" ry="3.8" transform="rotate(-8 30 48)" fill="#e4e4e7" stroke="#52525b" stroke-width="1"/>
+          <ellipse cx="510" cy="48" rx="9" ry="3.8" transform="rotate(8 510 48)" fill="#e4e4e7" stroke="#52525b" stroke-width="1"/>
+        </svg>`;
+      }
+
+      // 3. RECTANGULAR CLÁSICO (Foto 1: Negro Rectangular con Detalle Metálico Vertical)
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 175">
+        <defs>
+          <linearGradient id="negroRect" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#3f3f46"/>
+            <stop offset="15%" stop-color="#18181b"/>
+            <stop offset="85%" stop-color="#09090b"/>
+            <stop offset="100%" stop-color="#27272a"/>
+          </linearGradient>
+          <linearGradient id="reflejoR" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.38)"/>
+            <stop offset="35%" stop-color="rgba(255,255,255,0.03)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Micas Rectangulares -->
+        <rect x="44" y="38" width="182" height="112" rx="16" fill="${tinte}"/>
+        <rect x="314" y="38" width="182" height="112" rx="16" fill="${tinte}"/>
+
+        <!-- Reflejo de cristal -->
+        <polygon points="58,40 115,40 82,148 48,148" fill="url(#reflejoR)"/>
+        <polygon points="328,40 385,40 352,148 318,148" fill="url(#reflejoR)"/>
+
+        <!-- Cuerpo Rectangular Negro con barra metálica lateral -->
+        <path d="M14,30 C95,24 195,28 248,34 C262,36 278,36 292,34 C345,28 445,24 526,30 L522,62 L508,65 L502,138 C498,156 480,164 405,164 C332,164 312,152 304,112 C298,74 286,62 270,62 C254,62 242,74 236,112 C228,152 208,164 135,164 C60,164 42,156 38,138 L32,65 L18,62 Z
+                 M46,46 C46,38 54,36 72,36 L204,40 C218,41 224,48 222,68 L216,132 C214,146 196,150 135,150 C72,150 54,144 50,128 Z
+                 M494,46 C494,38 486,36 468,36 L336,40 C322,41 316,48 318,68 L324,132 C326,146 344,150 405,150 C468,150 486,144 490,128 Z"
+              fill="url(#negroRect)" fill-rule="evenodd" stroke="#050505" stroke-width="2"/>
+
+        <!-- Detalles metálicos verticales en las bisagras (como en la Foto 1) -->
+        <rect x="22" y="31" width="4" height="31" fill="#d4d4d8"/>
+        <rect x="514" y="31" width="4" height="31" fill="#d4d4d8"/>
+        <path d="M26,30 C110,26 195,30 245,35 M295,35 C345,30 430,26 514,30" stroke="rgba(255,255,255,0.25)" stroke-width="2" fill="none"/>
+      </svg>`;
+    }
+
+    const CATALOGO = [
+      { id: "carey-doble-puente", nombre: "Carey Doble Puente", anchoMm: 140, calibre: "52-20-145", customSrc: null },
+      { id: "wayfarer-obsidiana", nombre: "Wayfarer Obsidiana", anchoMm: 142, calibre: "54-18-145", customSrc: null },
+      { id: "rectangular-clasico", nombre: "Rectangular Clásico", anchoMm: 138, calibre: "53-17-140", customSrc: null }
     ];
 
     let armazonActual = CATALOGO[0];
@@ -111,11 +246,16 @@
     const hud = document.getElementById("hud");
     const controls = document.getElementById("controls");
 
-    function cargarSVG(item) {
-      armazonActual = item;
-      document.getElementById("frame-calibre").innerText = `CALIBRE ${item.calibre} (${item.anchoMm}mm)`;
-      const blob = new Blob([item.svg], { type: "image/svg+xml;charset=utf-8" });
-      frameImage.src = URL.createObjectURL(blob);
+    function actualizarImagenArmazon() {
+      const mmEfectivos = Math.round(armazonActual.anchoMm * ajusteEscalaUsuario);
+      document.getElementById("frame-calibre").innerText = `CALIBRE ${armazonActual.calibre} (${mmEfectivos}mm)`;
+      if (armazonActual.customSrc) {
+        frameImage.src = armazonActual.customSrc;
+      } else {
+        const svgStr = generarArmazonFotorrealista(armazonActual.id, tinteActual);
+        const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+        frameImage.src = URL.createObjectURL(blob);
+      }
       renderizarBotones();
       actualizarLinkWA();
     }
@@ -126,22 +266,94 @@
       CATALOGO.forEach(item => {
         const btn = document.createElement("button");
         const activo = item.id === armazonActual.id;
-        btn.className = `px-3 py-2 text-xs border whitespace-nowrap transition ${
-          activo ? "bg-white text-black border-white font-bold" : "border-white/30 text-white hover:border-white"
+        btn.className = `px-3 py-1.5 text-[11px] border whitespace-nowrap transition ${
+          activo ? "bg-white text-black border-white font-bold" : "border-white/25 text-neutral-300 hover:border-white"
         }`;
         btn.innerText = item.nombre;
-        btn.onclick = () => cargarSVG(item);
+        btn.onclick = () => {
+          armazonActual = item;
+          actualizarImagenArmazon();
+        };
         container.appendChild(btn);
       });
     }
 
+    // Botones + y - para ajustar escala milimétrica al gusto
+    document.getElementById("scale-up").onclick = () => {
+      ajusteEscalaUsuario = Math.min(1.25, +(ajusteEscalaUsuario + 0.04).toFixed(2));
+      actualizarImagenArmazon();
+    };
+    document.getElementById("scale-down").onclick = () => {
+      ajusteEscalaUsuario = Math.max(0.80, +(ajusteEscalaUsuario - 0.04).toFixed(2));
+      actualizarImagenArmazon();
+    };
+
+    // Procesador Inteligente: Si subes un JPG con fondo blanco/beige, le quita el fondo automáticamente
+    document.getElementById("upload-png").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const img = new Image();
+      img.onload = () => {
+        const offCanvas = document.createElement("canvas");
+        offCanvas.width = img.width;
+        offCanvas.height = img.height;
+        const offCtx = offCanvas.getContext("2d");
+        offCtx.drawImage(img, 0, 0);
+
+        const imgData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+        const data = imgData.data;
+
+        // Detectar color del fondo tomando la esquina superior izquierda
+        const bgR = data[0], bgG = data[1], bgB = data[2];
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const distFondo = Math.hypot(r - bgR, g - bgG, b - bgB);
+          const brillo = (r + g + b) / 3;
+
+          // Si el píxel es igual al fondo (blanco/beige) o muy claro (dentro de la mica), hacerlo transparente
+          if (distFondo < 42 || brillo > 228) {
+            data[i + 3] = 0;
+          } else if (distFondo < 65) {
+            data[i + 3] = Math.round(((distFondo - 42) / 23) * 255);
+          }
+        }
+        offCtx.putImageData(imgData, 0, 0);
+
+        const nuevoItem = {
+          id: "custom-" + Date.now(),
+          nombre: "Mi Foto Recortada",
+          anchoMm: 140,
+          calibre: "FOTO REAL",
+          customSrc: offCanvas.toDataURL("image/png")
+        };
+        CATALOGO.unshift(nuevoItem);
+        armazonActual = nuevoItem;
+        actualizarImagenArmazon();
+      };
+      img.src = URL.createObjectURL(file);
+    });
+
+    // Selector de tintes de mica
+    document.querySelectorAll("#tint-list button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        tinteActual = btn.getAttribute("data-tint");
+        document.querySelectorAll("#tint-list button").forEach(b => {
+          b.classList.remove("bg-white", "text-black", "font-bold", "border-white");
+          b.classList.add("border-white/25");
+        });
+        btn.classList.add("bg-white", "text-black", "font-bold", "border-white");
+        actualizarImagenArmazon();
+      });
+    });
+
     function actualizarLinkWA() {
-      const msg = `Qué onda Gafapasta, me escanee en el Lab Virtual.\n• Índice Facial: ${ratioActual}\n• Diagnóstico: ${arquetipoActual}\n• Me probé: ${armazonActual.nombre} (${armazonActual.calibre})`;
+      const msg = `Qué onda Gafapasta, me probé en el Lab Virtual:\n• Pieza: ${armazonActual.nombre} (${armazonActual.calibre})\n• Índice Biométrico: ${ratioActual}\n• Diagnóstico: ${arquetipoActual}`;
       document.getElementById("wa-link").href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     }
 
     async function init() {
-      cargarSVG(CATALOGO[0]);
+      actualizarImagenArmazon();
       const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
       );
@@ -153,7 +365,7 @@
         runningMode: "VIDEO",
         numFaces: 1
       });
-      statusText.innerText = "Motor 3D listo. Permite el acceso a tu cámara.";
+      statusText.innerText = "Motor óptico listo. Permite el acceso a tu cámara.";
       startBtn.classList.remove("hidden");
     }
 
@@ -192,28 +404,26 @@
         const anchoCaraPx = Math.hypot(sienDer.x - sienIzq.x, sienDer.y - sienIzq.y);
         const altoCaraPx = Math.hypot(menton.x - frente.x, menton.y - frente.y);
 
-        // Proporción biométrica
         const ratio = (altoCaraPx / anchoCaraPx).toFixed(2);
         if (ratio !== ratioActual) {
           ratioActual = ratio;
           if (ratio > 1.36) {
-            arquetipoActual = "Rostro Vertical // Pide puente bajo o doble puente y volumen horizontal.";
+            arquetipoActual = "Rostro Vertical // El Carey Doble Puente o el Wayfarer rompen la longitud con peso horizontal.";
           } else if (ratio < 1.22) {
-            arquetipoActual = "Rostro Compacto-Angular // Pide líneas geométricas marcadas y puente llave.";
+            arquetipoActual = "Rostro Compacto-Angular // El Rectangular Clásico estiliza los tercios laterales.";
           } else {
-            arquetipoActual = "Proporción Balanceada // Aguanta acetato pesado (8mm) y siluetas de autor.";
+            arquetipoActual = "Proporción Balanceada // Te quedan siluetas de autor como el Carey Doble Puente.";
           }
           document.getElementById("hud-ratio").innerText = `ÍNDICE: ${ratioActual}`;
           document.getElementById("hud-arquetipo").innerText = arquetipoActual;
           actualizarLinkWA();
         }
 
-        // Escala milimétrica (asumiendo 138mm promedio bicigomático)
         const pxPorMm = anchoCaraPx / 138;
-        const anchoLentePx = armazonActual.anchoMm * pxPorMm;
-        const altoLentePx = anchoLentePx * (180 / 500);
+        const anchoLentePx = armazonActual.anchoMm * pxPorMm * ajusteEscalaUsuario;
+        const aspect = frameImage.naturalWidth ? (frameImage.naturalHeight / frameImage.naturalWidth) : (195 / 540);
+        const altoLentePx = anchoLentePx * aspect;
 
-        // Ajuste de giro lateral (Yaw)
         const dIzq = Math.hypot(puente.x - sienIzq.x, puente.y - sienIzq.y);
         const dDer = Math.hypot(sienDer.x - puente.x, sienDer.y - puente.y);
         const yawScale = Math.max(0.82, 1 - (Math.abs(dIzq - dDer) / anchoCaraPx) * 0.35);
@@ -222,6 +432,12 @@
         ctx.translate(puente.x, puente.y);
         ctx.rotate(roll);
         ctx.scale(yawScale, 1);
+
+        // Sombra realista sobre el tabique y pómulos
+        ctx.shadowColor = "rgba(0, 0, 0, 0.58)";
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetY = 9;
+
         ctx.drawImage(frameImage, -anchoLentePx / 2, -altoLentePx * 0.36, anchoLentePx, altoLentePx);
         ctx.restore();
       }
